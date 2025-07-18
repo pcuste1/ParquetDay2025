@@ -41,7 +41,7 @@ export class ParquetConversionStack extends cdk.Stack {
         glueDatabase.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
         const glueTable = new glue.CfnTable(this, 'GlueTable', {
-            databaseName: this.databaseName,
+            databaseName: glueDatabase.databaseName!,
             catalogId: props.account,
             tableInput: {
                 name: this.tableName,
