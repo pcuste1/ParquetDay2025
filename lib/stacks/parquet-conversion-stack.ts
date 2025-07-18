@@ -67,6 +67,8 @@ export class ParquetConversionStack extends cdk.Stack {
         });
         glueTable.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
+        glueTable.addDependency(glueDatabase);
+
         const firehose = new kinesisfirehose.CfnDeliveryStream(this, 'Firehose', {
             deliveryStreamType: 'KinesisStreamAsSource',
             
