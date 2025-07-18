@@ -27,7 +27,7 @@ export class ParquetConversionStack extends cdk.Stack {
         const firehoseRole = new iam.Role(this, 'firehoseRole', {
             assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
             managedPolicies: [
-                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonKinesisReadOnlyAcces')
+                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonKinesisReadOnlyAccess')
             ]
         });
         firehoseRole.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
