@@ -34,6 +34,7 @@ export class ParquetConversionStack extends cdk.Stack {
 
         const glueDatabase = new glue.CfnDatabase(this, 'GlueDatabase', {
             catalogId: props.account,
+            databaseName: this.databaseName,
             databaseInput: {
                 name: this.databaseName
             },
