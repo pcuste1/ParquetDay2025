@@ -41,7 +41,6 @@ export class StackSet extends cdk.Stage {
                 bucket: this.bucketStack.bucket,
                 inputStream: this.kinesisStack.stream,
                 account: props.env!.account!.toString(),
-                databaseName: 'parquetDayGlueDatabase'
             }
         );
 

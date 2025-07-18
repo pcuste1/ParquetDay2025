@@ -8,7 +8,6 @@ import { Construct } from 'constructs';
 
 export interface ParquetConversionStackProps extends cdk.StackProps {
     readonly account: string;
-    readonly databaseName: string;
     readonly bucket: s3.IBucket;
     readonly inputStream: kinesis.IStream;
 }
@@ -16,16 +15,14 @@ export interface ParquetConversionStackProps extends cdk.StackProps {
 export class ParquetConversionStack extends cdk.Stack {
     readonly databaseName: string; 
     readonly tableName: string;
-    readonly classification: string;
     readonly logGroupName: string;
 
     constructor(scope: Construct, id: string, stageName: string, props: ParquetConversionStackProps) {
         super(scope, id, props);
 
-        this.databaseName = ''
-        this.tableName = ''
-        this.classification = ''
-        this.logGroupName = ''
+        this.databaseName = 'parquetDayGlueDatabase'
+        this.tableName = 'parquetDayGlueTable'
+        this.logGroupName = 'parquetDayLogGroup'
 
         const firehoseRole = new iam.Role(this, 'firehoseRole', {
             assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
@@ -49,7 +46,6 @@ export class ParquetConversionStack extends cdk.Stack {
             tableInput: {
                 name: this.tableName,
                 parameters: {
-                    classification: this.classification,
                     compressionType: 'Snappy',
                     typeOfData: 'file'
                 },
