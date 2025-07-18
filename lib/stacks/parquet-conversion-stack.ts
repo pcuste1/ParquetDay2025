@@ -20,9 +20,9 @@ export class ParquetConversionStack extends cdk.Stack {
     constructor(scope: Construct, id: string, stageName: string, props: ParquetConversionStackProps) {
         super(scope, id, props);
 
-        this.databaseName = 'parquetDayGlueDatabase'
-        this.tableName = 'parquetDayGlueTable'
-        this.logGroupName = 'parquetDayLogGroup'
+        this.databaseName = 'parquet-day-glue-database'
+        this.tableName = 'parquet-day-glue-table'
+        this.logGroupName = 'parquet-day-log-group'
 
         const firehoseRole = new iam.Role(this, 'firehoseRole', {
             assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
