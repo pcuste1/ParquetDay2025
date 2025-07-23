@@ -1,98 +1,161 @@
-import * as cdk from 'aws-cdk-lib'
-import * as glue from 'aws-cdk-lib/aws-glue'
-import * as iam from 'aws-cdk-lib/aws-iam'
-import * as kinesis from 'aws-cdk-lib/aws-kinesis'
-import * as kinesisfirehose from 'aws-cdk-lib/aws-kinesisfirehose'
-import * as s3 from 'aws-cdk-lib/aws-s3'
+import { 
+    aws_s3 as s3, 
+    aws_glue as glue, 
+    aws_kinesis as kinesis,
+    aws_kinesisfirehose as kinesisfirehose,
+    aws_iam as iam,
+    StackProps,
+    Stack
+    // aws_lambda as lambda,
+    // Duration
+} from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-export interface ParquetConversionStackProps extends cdk.StackProps {
-    readonly account: string;
-    readonly bucket: s3.IBucket;
-    readonly inputStream: kinesis.IStream;
+export interface ParquetConversionStackProps extends StackProps {
+    bucket: s3.IBucket;
+    account: string;
+    region: string;
+    inputStream: kinesis.IStream
 }
 
-export class ParquetConversionStack extends cdk.Stack {
-    readonly databaseName: string; 
-    readonly tableName: string;
-    readonly logGroupName: string;
+export class ParquetConversionStack extends Stack {
+    readonly databaseName = 'firehosedb';
+    readonly tableName = 'firehosegluetable';
+    readonly classification = 'parquet';
+    readonly logGroupName = '/aws/kinesisfirehose/firehose';
 
     constructor(scope: Construct, id: string, stageName: string, props: ParquetConversionStackProps) {
-        super(scope, id, props);
+        super(scope, id);
 
-        this.databaseName = 'parquet-day-glue-database'
-        this.tableName = 'parquet-day-glue-table'
-        this.logGroupName = 'parquet-day-log-group'
+        // create the glue database
+        const glueDatabase = new glue.CfnDatabase(this, 'GlueDatabase', {
+            catalogId: props.account,
+            databaseInput: {
+                name: this.databaseName
+            }
+        });
 
-        const firehoseRole = new iam.Role(this, 'firehoseRole', {
-            assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
-            managedPolicies: [
-                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonKinesisReadOnlyAccess')
+        // create the glue table with basic schema
+        const glueTable = new glue.CfnTable(this, 'GlueTable', {
+            databaseName: this.databaseName,
+            catalogId: props.account,
+            tableInput: {
+                name: this.tableName,
+                parameters: {
+                    classification: this.classification,
+                    compressionType: 'Snappy',
+                    typeOfData: 'file'
+                },
+                storageDescriptor: {
+                    columns: [
+                        {
+                            name: 'name',
+                            type: 'string'
+                        },
+                        {
+                            name: 'value',
+                            type: 'double'
+                        },
+                    ],      
+                    location: `s3://${props.bucket.bucketName}/`
+                }
+            }
+        });
+
+        // create a python lambda function to transform the data into a flattened format
+        // const flattenerLambda = new lambda.Function(this, 'FlattenDataFunction', {
+        //     runtime: lambda.Runtime.PYTHON_3_12,
+        //     description: 'Flattens nested json for firehose. Created on ' + new Date().toISOString(),
+        //     handler: 'flattener.handle',
+        //     code: lambda.Code.fromAsset('lambda'),
+        //     timeout: Duration.seconds(60),
+        // });
+
+        // create Role for firehose delivery stream
+        const firehoseRole = new iam.Role(this, "firehoseRole", {
+            assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com')
+        });
+
+        // add s3 permission
+        firehoseRole.addToPolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: [props.bucket.bucketArn],
+            actions: [
+                's3:AbortMultipartUpload', 
+                's3:GetBucketLocation', 
+                's3:GetObject', 
+                's3:ListBucket', 
+                's3:ListBucketMultipartUploads', 
+                's3:PutObject',
+            ],
+        }));
+
+        // add kinesis read permission
+        new iam.Policy(this, 'FirehoseKinesisReadPolicy', {
+            roles: [firehoseRole],
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    resources: [props.inputStream.streamArn],
+                    actions: ['kinesis:DescribeStream', 'kinesis:GetShardIterator', 'kinesis:GetRecords']
+                })
             ]
         });
-        firehoseRole.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
-        // const glueDatabase = new glue.CfnDatabase(this, 'GlueDatabase', {
-        //     catalogId: props.account,
-        //     databaseName: this.databaseName,
-        //     databaseInput: {
-        //         name: this.databaseName
-        //     },
-        // });
-        // glueDatabase.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
-        // const glueTable = new glue.CfnTable(this, 'GlueTable', {
-        //     databaseName: glueDatabase.databaseName!,
-        //     catalogId: props.account,
-        //     tableInput: {
-        //         name: this.tableName,
-        //         parameters: {
-        //             compressionType: 'Snappy',
-        //             typeOfData: 'file'
-        //         },
-        //         storageDescriptor: {
-        //             columns: [
-        //                 {
-        //                     name: 'name',
-        //                     type: 'string'
-        //                 },
-        //                 {
-        //                     name: 'value',
-        //                     type: 'double'
-        //                 },
-        //             ],
-        //             location: `s3://${props.bucket.bucketName}/`
-        //         }
-        //     },
-        // });
-        // glueTable.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-        // glueTable.addDependency(glueDatabase);
+        // add cloudwatch log put permission for error logging
+        new iam.Policy(this, 'FirehoseCloudwatchLogsPolicy', {
+            roles: [firehoseRole],
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    resources: ['*'],
+                    actions: ['logs:PutLogEvents']
+                })
+            ]
+        });
 
+        // add glue permission
+        new iam.Policy(this, 'FirehoseGluePolicy', {
+            roles: [firehoseRole],
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    resources: [`arn:aws:glue:${props.region}:${props.account}:catalog`, 
+                        `arn:aws:glue:${props.region}:${props.account}:database/${this.databaseName}`, 
+                        `arn:aws:glue:${props.region}:${props.account}:table/${this.databaseName}/${this.tableName}`],
+                    actions: [
+                        'glue:GetTable*', 
+                        'glue:GetSchema*', 
+                        'glue:GetDatabase', 
+                        'glue:GetDatabases'
+                    ]
+                })
+            ]
+        });
+
+        // add permission for the lambda function to be invoked by the firehose delivery stream
+        // flattenerLambda.grantInvoke(firehoseRole);
+
+        // create the firehose delivery stream
         const firehose = new kinesisfirehose.CfnDeliveryStream(this, 'Firehose', {
             deliveryStreamType: 'KinesisStreamAsSource',
-            // input data source stream arn and role to use to access stream.
             kinesisStreamSourceConfiguration: {
                 kinesisStreamArn: props.inputStream.streamArn,
                 roleArn: firehoseRole.roleArn,
             },
             extendedS3DestinationConfiguration: {
-                // output data source bucket arn
                 bucketArn: props.bucket.bucketArn,
-                
-                // how long will firehose keep the data before converting/writing
                 bufferingHints: {
                     intervalInSeconds: 60,
                     sizeInMBs: 64,
                 },
-                
-                // Log configuration for cloudwatch
                 cloudWatchLoggingOptions: {
                     enabled: true,
                     logGroupName: this.logGroupName,
                     logStreamName: 'logs'
                 },
-                
-                // format conversion to parquet using glue schema
+                // format to parquet using glue schema
                 dataFormatConversionConfiguration: {
                     enabled: true,
                     inputFormatConfiguration: {
@@ -113,33 +176,32 @@ export class ParquetConversionStack extends cdk.Stack {
                         catalogId: props.account,
                         databaseName: this.databaseName,
                         tableName: this.tableName,
-                        region: props.env!.region,
+                        region: props.region,
                         roleArn: firehoseRole.roleArn
                     }
                 },
-                
-                // The firehose role
                 roleArn: firehoseRole.roleArn,
-                
-                // // The data transformer configuration
                 // processingConfiguration: {
                 //     enabled: true,
-                //     processors: [{
-                //         type: 'Lambda',
-                //         parameters: [
-                //             {
-                //                 parameterName: 'LambdaArn',
-                //                 parameterValue: flattenerLambda.functionArn
-                //             },
-                //             {
-                //                 parameterName: 'RoleArn',
-                //                 parameterValue: firehoseRole.roleArn
-                //             }
-                //         ]
-                //     }]
+                //     processors: [
+                //         {
+                //             type: 'Lambda',
+                //             parameters: [
+                //                 {
+                //                     parameterName: 'LambdaArn',
+                //                     parameterValue: flattenerLambda.functionArn
+                //                 },
+                //                 {
+                //                     parameterName: 'RoleArn',
+                //                     parameterValue: firehoseRole.roleArn
+                //                 }
+                //             ]
+                //         }
+                //     ]
                 // }
             }
         });
-        firehose.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+
+        props.bucket.grantReadWrite(firehoseRole);
     }
 }
