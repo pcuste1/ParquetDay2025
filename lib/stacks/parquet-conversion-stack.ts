@@ -78,30 +78,30 @@ export class ParquetConversionStack extends Stack {
         });
 
         // add s3 permission
-        firehoseRole.addToPolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            resources: [props.bucket.bucketArn],
-            actions: [
-                's3:AbortMultipartUpload', 
-                's3:GetBucketLocation', 
-                's3:GetObject', 
-                's3:ListBucket', 
-                's3:ListBucketMultipartUploads', 
-                's3:PutObject',
-            ],
-        }));
+        // firehoseRole.addToPolicy(new iam.PolicyStatement({
+        //     effect: iam.Effect.ALLOW,
+        //     resources: [props.bucket.bucketArn],
+        //     actions: [
+        //         's3:AbortMultipartUpload', 
+        //         's3:GetBucketLocation', 
+        //         's3:GetObject', 
+        //         's3:ListBucket', 
+        //         's3:ListBucketMultipartUploads', 
+        //         's3:PutObject',
+        //     ],
+        // }));
 
         // add kinesis read permission
-        new iam.Policy(this, 'FirehoseKinesisReadPolicy', {
-            roles: [firehoseRole],
-            statements: [
-                new iam.PolicyStatement({
-                    effect: iam.Effect.ALLOW,
-                    resources: [props.inputStream.streamArn],
-                    actions: ['kinesis:DescribeStream', 'kinesis:GetShardIterator', 'kinesis:GetRecords']
-                })
-            ]
-        });
+        // new iam.Policy(this, 'FirehoseKinesisReadPolicy', {
+        //     roles: [firehoseRole],
+        //     statements: [
+        //         new iam.PolicyStatement({
+        //             effect: iam.Effect.ALLOW,
+        //             resources: [props.inputStream.streamArn],
+        //             actions: ['kinesis:DescribeStream', 'kinesis:GetShardIterator', 'kinesis:GetRecords']
+        //         })
+        //     ]
+        // });
 
 
         // add cloudwatch log put permission for error logging
@@ -202,7 +202,7 @@ export class ParquetConversionStack extends Stack {
                 // }
             }
         });
-
+        props.inputStream.grantReadWrite(firehoseRole);
         props.bucket.grantReadWrite(firehoseRole);
     }
 }
