@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib'
 import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as iam from 'aws-cdk-lib/aws-iam'
 import { Construct } from 'constructs';
 
 export interface BucketStackProps extends cdk.StackProps {
@@ -20,5 +21,11 @@ export class BucketStack extends cdk.Stack {
             encryption: s3.BucketEncryption.KMS,
             removalPolicy: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE
         });
+
+        this.bucket.addToResourcePolicy(new iam.PolicyStatement({
+            actions: ['s3:PutObject'],
+            resources: [`${this.bucket.bucketArn}/*`],
+            principals: [new iam.ServicePrincipal('firehose.amazonaws.com')]
+        }));
     }
 }

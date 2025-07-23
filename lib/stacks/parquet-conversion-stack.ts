@@ -78,30 +78,31 @@ export class ParquetConversionStack extends Stack {
         });
 
         // add s3 permission
-        // firehoseRole.addToPolicy(new iam.PolicyStatement({
-        //     effect: iam.Effect.ALLOW,
-        //     resources: [props.bucket.bucketArn],
-        //     actions: [
-        //         's3:AbortMultipartUpload', 
-        //         's3:GetBucketLocation', 
-        //         's3:GetObject', 
-        //         's3:ListBucket', 
-        //         's3:ListBucketMultipartUploads', 
-        //         's3:PutObject',
-        //     ],
-        // }));
+        firehoseRole.addToPolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            resources: [props.bucket.bucketArn],
+            actions: [
+                's3:AbortMultipartUpload', 
+                's3:GetBucketLocation', 
+                's3:GetObject', 
+                's3:ListBucket', 
+                's3:ListBucketMultipartUploads', 
+                's3:PutObject',
+            ],
+        }));
 
         // add kinesis read permission
-        // new iam.Policy(this, 'FirehoseKinesisReadPolicy', {
-        //     roles: [firehoseRole],
-        //     statements: [
-        //         new iam.PolicyStatement({
-        //             effect: iam.Effect.ALLOW,
-        //             resources: [props.inputStream.streamArn],
-        //             actions: ['kinesis:DescribeStream', 'kinesis:GetShardIterator', 'kinesis:GetRecords']
-        //         })
-        //     ]
-        // });
+        firehoseRole.addToPolicy(
+            new iam.PolicyStatement({
+                actions: [
+                'kinesis:DescribeStream',
+                'kinesis:GetRecords',
+                'kinesis:GetShardIterator',
+                'kinesis:ListShards'
+                ],
+                resources: [props.inputStream.streamArn],
+            }),
+        );
 
 
         // add cloudwatch log put permission for error logging
