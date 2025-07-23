@@ -32,46 +32,44 @@ export class ParquetConversionStack extends cdk.Stack {
         });
         firehoseRole.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
-        const glueDatabase = new glue.CfnDatabase(this, 'GlueDatabase', {
-            catalogId: props.account,
-            databaseName: this.databaseName,
-            databaseInput: {
-                name: this.databaseName
-            },
-        });
-        glueDatabase.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+        // const glueDatabase = new glue.CfnDatabase(this, 'GlueDatabase', {
+        //     catalogId: props.account,
+        //     databaseName: this.databaseName,
+        //     databaseInput: {
+        //         name: this.databaseName
+        //     },
+        // });
+        // glueDatabase.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
 
-        const glueTable = new glue.CfnTable(this, 'GlueTable', {
-            databaseName: glueDatabase.databaseName!,
-            catalogId: props.account,
-            tableInput: {
-                name: this.tableName,
-                parameters: {
-                    compressionType: 'Snappy',
-                    typeOfData: 'file'
-                },
-                storageDescriptor: {
-                    columns: [
-                        {
-                            name: 'name',
-                            type: 'string'
-                        },
-                        {
-                            name: 'value',
-                            type: 'double'
-                        },
-                    ],
-                    location: `s3://${props.bucket.bucketName}/`
-                }
-            },
-        });
-        glueTable.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
-
-        glueTable.addDependency(glueDatabase);
+        // const glueTable = new glue.CfnTable(this, 'GlueTable', {
+        //     databaseName: glueDatabase.databaseName!,
+        //     catalogId: props.account,
+        //     tableInput: {
+        //         name: this.tableName,
+        //         parameters: {
+        //             compressionType: 'Snappy',
+        //             typeOfData: 'file'
+        //         },
+        //         storageDescriptor: {
+        //             columns: [
+        //                 {
+        //                     name: 'name',
+        //                     type: 'string'
+        //                 },
+        //                 {
+        //                     name: 'value',
+        //                     type: 'double'
+        //                 },
+        //             ],
+        //             location: `s3://${props.bucket.bucketName}/`
+        //         }
+        //     },
+        // });
+        // glueTable.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE);
+        // glueTable.addDependency(glueDatabase);
 
         const firehose = new kinesisfirehose.CfnDeliveryStream(this, 'Firehose', {
             deliveryStreamType: 'KinesisStreamAsSource',
-            
             // input data source stream arn and role to use to access stream.
             kinesisStreamSourceConfiguration: {
                 kinesisStreamArn: props.inputStream.streamArn,
@@ -105,9 +103,9 @@ export class ParquetConversionStack extends cdk.Stack {
                     outputFormatConfiguration: {
                         serializer: {
                             parquetSerDe: {
-                            compression: 'SNAPPY',
-                            enableDictionaryCompression: true,
-                            writerVersion: 'V2'
+                                compression: 'SNAPPY',
+                                enableDictionaryCompression: true,
+                                writerVersion: 'V2'
                             }
                         }
                     },
