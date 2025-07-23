@@ -5,7 +5,8 @@ import {
     aws_kinesisfirehose as kinesisfirehose,
     aws_iam as iam,
     StackProps,
-    Stack
+    Stack,
+    CfnResource
     // aws_lambda as lambda,
     // Duration
 } from 'aws-cdk-lib';
@@ -73,68 +74,131 @@ export class ParquetConversionStack extends Stack {
         // });
 
         // create Role for firehose delivery stream
-        const firehoseRole = new iam.Role(this, "firehoseRole", {
-            assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com')
+        const firehoseRole = new iam.Role(this, `firehoseRole`, {
+            assumedBy: new iam.ServicePrincipal('firehose.amazonaws.com'),
+            inlinePolicies: {
+                'allow-s3-kinesis-logs': new iam.PolicyDocument({
+                    statements: [
+                        new iam.PolicyStatement({
+                            effect: iam.Effect.ALLOW,
+                            actions: [
+                                "kinesis:DescribeStream",
+                                "kinesis:DescribeStreamSummary",
+                                "kinesis:GetRecords",
+                                "kinesis:GetShardIterator",
+                                "kinesis:ListShards",
+                                "kinesis:SubscribeToShard"
+                            ],
+                            resources: [props.inputStream.streamArn]
+                        }),
+                        new iam.PolicyStatement({
+                            effect: iam.Effect.ALLOW,
+                            actions: [
+                                "s3:GetObject*",
+                                "s3:GetBucket*",
+                                "s3:List*",
+                                "s3:DeleteObject*",
+                                "s3:PutObject*",
+                                "s3:Abort*"
+                            ],
+                            resources: [
+                                props.bucket.bucketArn,
+                                props.bucket.bucketArn + "/*"
+                            ]
+                        }),
+                        new iam.PolicyStatement({
+                            effect: iam.Effect.ALLOW,
+                            actions: [
+                                "logs:PutLogEvents"
+                            ],
+                            resources: ['*']
+                        }),
+                        new iam.PolicyStatement({
+                            effect: iam.Effect.ALLOW,
+                            resources: [`arn:aws:glue:${props.region}:${props.account}:catalog`, 
+                                `arn:aws:glue:${props.region}:${props.account}:database/${this.databaseName}`, 
+                                `arn:aws:glue:${props.region}:${props.account}:table/${this.databaseName}/${this.tableName}`],
+                            actions: [
+                                'glue:GetTable*', 
+                                'glue:GetSchema*', 
+                                'glue:GetDatabase', 
+                                'glue:GetDatabases'
+                            ]
+                        })
+                    ]
+                })
+            }
         });
 
         // add s3 permission
-        firehoseRole.addToPolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            resources: [props.bucket.bucketArn],
-            actions: [
-                's3:AbortMultipartUpload', 
-                's3:GetBucketLocation', 
-                's3:GetObject', 
-                's3:ListBucket', 
-                's3:ListBucketMultipartUploads', 
-                's3:PutObject',
-            ],
-        }));
+        // firehoseRole.addToPolicy(new iam.PolicyStatement({
+        //     effect: iam.Effect.ALLOW,
+        //     resources: [props.bucket.bucketArn],
+        //     actions: [
+        //         's3:AbortMultipartUpload', 
+        //         's3:GetBucketLocation', 
+        //         's3:GetObject', 
+        //         's3:ListBucket', 
+        //         's3:ListBucketMultipartUploads', 
+        //         's3:PutObject',
+        //     ],
+        // }));
 
         // add kinesis read permission
-        firehoseRole.addToPolicy(
-            new iam.PolicyStatement({
-                actions: [
-                'kinesis:DescribeStream',
-                'kinesis:GetRecords',
-                'kinesis:GetShardIterator',
-                'kinesis:ListShards'
-                ],
-                resources: [props.inputStream.streamArn],
-            }),
-        );
+        // firehoseRole.addToPolicy(
+        //     new iam.PolicyStatement({
+        //         actions: [
+        //         'kinesis:DescribeStream',
+        //         'kinesis:GetRecords',
+        //         'kinesis:GetShardIterator',
+        //         'kinesis:ListShards'
+        //         ],
+        //         resources: [props.inputStream.streamArn],
+        //     }),
+        // );
+
+        // const firehosePolicy = new iam.Policy(this, 'FirehosePolicy', {
+        //     roles: [firehoseRole],
+        //     statements: [
+        //         new iam.PolicyStatement({
+        //             effect: iam.Effect.ALLOW,
+        //             resources: [props.inputStream.streamArn],
+        //             actions: ['kinesis:DescribeStream', 'kinesis:GetShardIterator', 'kinesis:GetRecords'],
+        //         }),
+        //     ],
+        // });
 
 
         // add cloudwatch log put permission for error logging
-        new iam.Policy(this, 'FirehoseCloudwatchLogsPolicy', {
-            roles: [firehoseRole],
-            statements: [
-                new iam.PolicyStatement({
-                    effect: iam.Effect.ALLOW,
-                    resources: ['*'],
-                    actions: ['logs:PutLogEvents']
-                })
-            ]
-        });
+        // new iam.Policy(this, 'FirehoseCloudwatchLogsPolicy', {
+        //     roles: [firehoseRole],
+        //     statements: [
+        //         new iam.PolicyStatement({
+        //             effect: iam.Effect.ALLOW,
+        //             resources: ['*'],
+        //             actions: ['logs:PutLogEvents']
+        //         })
+        //     ]
+        // });
 
         // add glue permission
-        new iam.Policy(this, 'FirehoseGluePolicy', {
-            roles: [firehoseRole],
-            statements: [
-                new iam.PolicyStatement({
-                    effect: iam.Effect.ALLOW,
-                    resources: [`arn:aws:glue:${props.region}:${props.account}:catalog`, 
-                        `arn:aws:glue:${props.region}:${props.account}:database/${this.databaseName}`, 
-                        `arn:aws:glue:${props.region}:${props.account}:table/${this.databaseName}/${this.tableName}`],
-                    actions: [
-                        'glue:GetTable*', 
-                        'glue:GetSchema*', 
-                        'glue:GetDatabase', 
-                        'glue:GetDatabases'
-                    ]
-                })
-            ]
-        });
+        // new iam.Policy(this, 'FirehoseGluePolicy', {
+        //     roles: [firehoseRole],
+        //     statements: [
+        //         new iam.PolicyStatement({
+        //             effect: iam.Effect.ALLOW,
+        //             resources: [`arn:aws:glue:${props.region}:${props.account}:catalog`, 
+        //                 `arn:aws:glue:${props.region}:${props.account}:database/${this.databaseName}`, 
+        //                 `arn:aws:glue:${props.region}:${props.account}:table/${this.databaseName}/${this.tableName}`],
+        //             actions: [
+        //                 'glue:GetTable*', 
+        //                 'glue:GetSchema*', 
+        //                 'glue:GetDatabase', 
+        //                 'glue:GetDatabases'
+        //             ]
+        //         })
+        //     ]
+        // });
 
         // add permission for the lambda function to be invoked by the firehose delivery stream
         // flattenerLambda.grantInvoke(firehoseRole);
