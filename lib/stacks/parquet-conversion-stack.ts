@@ -61,6 +61,7 @@ export class ParquetConversionStack extends Stack {
                 }
             }
         });
+        glueTable.addDependency(glueDatabase);
 
         // create a python lambda function to transform the data into a flattened format
         // const flattenerLambda = new lambda.Function(this, 'FlattenDataFunction', {
