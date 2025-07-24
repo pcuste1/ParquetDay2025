@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import { Construct } from 'constructs';
-import { StackSet } from './stages';
+import { StackSet } from './stacks';
 
 
 export class PipelineStack extends cdk.Stack {
