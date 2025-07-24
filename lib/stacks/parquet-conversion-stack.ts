@@ -148,6 +148,7 @@ export class ParquetConversionStack extends Stack {
                 roleArn: firehoseRole.roleArn,
             },
             extendedS3DestinationConfiguration: {
+                prefix: "parquetdata/year=!{partitionKeyFromQuery:year}/month=!{partitionKeyFromQuery:month}/day=!{partitionKeyFromQuery:day}/hour=!{partitionKeyFromQuery:hour}/",
                 bucketArn: props.bucket.bucketArn,
                 bufferingHints: {
                     intervalInSeconds: 60,
