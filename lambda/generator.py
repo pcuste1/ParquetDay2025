@@ -2,7 +2,7 @@ import boto3
 import os
 import json
 import random
-
+from datetime import datetime
 
 # generate json data and write it to kinesis stream
 def handle(event, context):
@@ -21,5 +21,6 @@ def handle(event, context):
 def generate_random_data():
     return {
         'name': 'test_name',
-        'value': random.random()
+        'value': random.random(),
+        'timestamp': datetime.utcnow().strftime("%Y-%m-%d-%H")
     }

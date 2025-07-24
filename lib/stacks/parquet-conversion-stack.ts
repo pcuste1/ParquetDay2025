@@ -54,24 +54,28 @@ export class ParquetConversionStack extends Stack {
                             name: 'value',
                             type: 'double'
                         },
+                        {
+                            name: 'timestamp',
+                            type: 'string'
+                        }
                     ],      
                     location: `s3://${props.bucket.bucketName}/`
                 },
                 partitionKeys: [
                     {
-                        name: "partition_0",
+                        name: "year",
                         type: "string"
                     },
                     {
-                        name: "partition_1",
+                        name: "month",
                         type: "string"
                     },
                     {
-                        name: "partition_2",
+                        name: "day",
                         type: "string"
                     },
                     {
-                        name: "partition_3",
+                        name: "hour",
                         type: "string"
                     }
                 ]
@@ -180,6 +184,33 @@ export class ParquetConversionStack extends Stack {
                     }
                 },
                 roleArn: firehoseRole.roleArn,
+                processingConfiguration: {
+                    enabled: true,
+                    processors: [
+                        {
+                            type: 'AppendDelimiterToRecord'
+                        },
+                        {
+                            type: 'MetadataExtraction',
+                            parameters: [
+                                {
+                                parameterName: 'JsonParsingEngine',
+                                parameterValue: 'JQ-1.6'
+                                },
+                                {
+                                    parameterName: 'MetadataExtractionQuery',
+                                    parameterValue: '{year:.timestamp[0:4],month:.timestamp[5:7],day:.timestamp[8:10],hour:.timestamp[11:13]}'
+                                }
+                            ]
+                        }
+                    ]
+                },
+                dynamicPartitioningConfiguration: {
+                    enabled: true,
+                    retryOptions: {
+                        durationInSeconds:300
+                    }
+                }
             }
         });
         props.inputStream.grantReadWrite(firehoseRole);
