@@ -6,9 +6,6 @@ import {
     aws_iam as iam,
     StackProps,
     Stack,
-    CfnResource
-    // aws_lambda as lambda,
-    // Duration
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
@@ -59,19 +56,28 @@ export class ParquetConversionStack extends Stack {
                         },
                     ],      
                     location: `s3://${props.bucket.bucketName}/`
-                }
+                },
+                partitionKeys: [
+                    {
+                        name: "partition_0",
+                        type: "string"
+                    },
+                    {
+                        name: "partition_1",
+                        type: "string"
+                    },
+                    {
+                        name: "partition_2",
+                        type: "string"
+                    },
+                    {
+                        name: "partition_3",
+                        type: "string"
+                    }
+                ]
             }
         });
         glueTable.addDependency(glueDatabase);
-
-        // create a python lambda function to transform the data into a flattened format
-        // const flattenerLambda = new lambda.Function(this, 'FlattenDataFunction', {
-        //     runtime: lambda.Runtime.PYTHON_3_12,
-        //     description: 'Flattens nested json for firehose. Created on ' + new Date().toISOString(),
-        //     handler: 'flattener.handle',
-        //     code: lambda.Code.fromAsset('lambda'),
-        //     timeout: Duration.seconds(60),
-        // });
 
         // create Role for firehose delivery stream
         const firehoseRole = new iam.Role(this, `firehoseRole`, {
@@ -130,79 +136,6 @@ export class ParquetConversionStack extends Stack {
             }
         });
 
-        // add s3 permission
-        // firehoseRole.addToPolicy(new iam.PolicyStatement({
-        //     effect: iam.Effect.ALLOW,
-        //     resources: [props.bucket.bucketArn],
-        //     actions: [
-        //         's3:AbortMultipartUpload', 
-        //         's3:GetBucketLocation', 
-        //         's3:GetObject', 
-        //         's3:ListBucket', 
-        //         's3:ListBucketMultipartUploads', 
-        //         's3:PutObject',
-        //     ],
-        // }));
-
-        // add kinesis read permission
-        // firehoseRole.addToPolicy(
-        //     new iam.PolicyStatement({
-        //         actions: [
-        //         'kinesis:DescribeStream',
-        //         'kinesis:GetRecords',
-        //         'kinesis:GetShardIterator',
-        //         'kinesis:ListShards'
-        //         ],
-        //         resources: [props.inputStream.streamArn],
-        //     }),
-        // );
-
-        // const firehosePolicy = new iam.Policy(this, 'FirehosePolicy', {
-        //     roles: [firehoseRole],
-        //     statements: [
-        //         new iam.PolicyStatement({
-        //             effect: iam.Effect.ALLOW,
-        //             resources: [props.inputStream.streamArn],
-        //             actions: ['kinesis:DescribeStream', 'kinesis:GetShardIterator', 'kinesis:GetRecords'],
-        //         }),
-        //     ],
-        // });
-
-
-        // add cloudwatch log put permission for error logging
-        // new iam.Policy(this, 'FirehoseCloudwatchLogsPolicy', {
-        //     roles: [firehoseRole],
-        //     statements: [
-        //         new iam.PolicyStatement({
-        //             effect: iam.Effect.ALLOW,
-        //             resources: ['*'],
-        //             actions: ['logs:PutLogEvents']
-        //         })
-        //     ]
-        // });
-
-        // add glue permission
-        // new iam.Policy(this, 'FirehoseGluePolicy', {
-        //     roles: [firehoseRole],
-        //     statements: [
-        //         new iam.PolicyStatement({
-        //             effect: iam.Effect.ALLOW,
-        //             resources: [`arn:aws:glue:${props.region}:${props.account}:catalog`, 
-        //                 `arn:aws:glue:${props.region}:${props.account}:database/${this.databaseName}`, 
-        //                 `arn:aws:glue:${props.region}:${props.account}:table/${this.databaseName}/${this.tableName}`],
-        //             actions: [
-        //                 'glue:GetTable*', 
-        //                 'glue:GetSchema*', 
-        //                 'glue:GetDatabase', 
-        //                 'glue:GetDatabases'
-        //             ]
-        //         })
-        //     ]
-        // });
-
-        // add permission for the lambda function to be invoked by the firehose delivery stream
-        // flattenerLambda.grantInvoke(firehoseRole);
-
         // create the firehose delivery stream
         const firehose = new kinesisfirehose.CfnDeliveryStream(this, 'Firehose', {
             deliveryStreamType: 'KinesisStreamAsSource',
@@ -247,24 +180,6 @@ export class ParquetConversionStack extends Stack {
                     }
                 },
                 roleArn: firehoseRole.roleArn,
-                // processingConfiguration: {
-                //     enabled: true,
-                //     processors: [
-                //         {
-                //             type: 'Lambda',
-                //             parameters: [
-                //                 {
-                //                     parameterName: 'LambdaArn',
-                //                     parameterValue: flattenerLambda.functionArn
-                //                 },
-                //                 {
-                //                     parameterName: 'RoleArn',
-                //                     parameterValue: firehoseRole.roleArn
-                //                 }
-                //             ]
-                //         }
-                //     ]
-                // }
             }
         });
         props.inputStream.grantReadWrite(firehoseRole);
