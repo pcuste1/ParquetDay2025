@@ -21,5 +21,5 @@ def handle(event, context):
 def generate_random_data():
     return {
         'name': 'test_name',
-        'value': random.random(0, 100)
+        'value': random.random()
     }
