@@ -149,6 +149,7 @@ export class ParquetConversionStack extends Stack {
             },
             extendedS3DestinationConfiguration: {
                 prefix: "parquetdata/year=!{partitionKeyFromQuery:year}/month=!{partitionKeyFromQuery:month}/day=!{partitionKeyFromQuery:day}/hour=!{partitionKeyFromQuery:hour}/",
+                errorOutputPrefix: "errors/",
                 bucketArn: props.bucket.bucketArn,
                 bufferingHints: {
                     intervalInSeconds: 60,
