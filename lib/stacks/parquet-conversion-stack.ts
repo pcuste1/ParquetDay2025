@@ -42,7 +42,7 @@ export class ParquetConversionStack extends Stack {
                 parameters: {
                     classification: this.classification,
                     compressionType: 'Snappy',
-                    typeOfData: 'file'
+                    typeOfData: 'file',
                 },
                 storageDescriptor: {
                     columns: [
@@ -59,7 +59,7 @@ export class ParquetConversionStack extends Stack {
                             type: 'string'
                         }
                     ],      
-                    location: `s3://${props.bucket.bucketName}/`
+                    location: `s3://${props.bucket.bucketName}/parquetdata/`
                 },
                 partitionKeys: [
                     {
